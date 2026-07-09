@@ -1,0 +1,1 @@
+# LegalDocAI - App package

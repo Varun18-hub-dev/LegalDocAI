@@ -1,0 +1,55 @@
+# ==========================
+# Python
+# ==========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environments
+venv/
+.venv/
+server/venv/
+server/.venv/
+
+# ==========================
+# Environment Variables
+# ==========================
+.env
+server/.env
+
+# ==========================
+# Node
+# ==========================
+node_modules/
+frontend/node_modules/
+
+# Build
+frontend/dist/
+
+# ==========================
+# Databases
+# ==========================
+*.db
+*.sqlite
+*.sqlite3
+
+# ==========================
+# Project Data
+# ==========================
+server/data/
+server/logs/
+server/vector_store/
+uploads/
+logs/
+
+# ==========================
+# IDE
+# ==========================
+.vscode/
+.idea/
+
+# ==========================
+# Git
+# ==========================
+.git
