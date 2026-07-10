@@ -189,26 +189,20 @@ static_dir = Path(__file__).resolve().parent / "static"
 if static_dir.exists():
     log.info(f"Serving React static frontend from: {static_dir}")
     
-    # Mount assets folder if exists
-    assets_dir = static_dir / "assets"
-    if assets_dir.exists():
-        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
-        
-    @app.get("/{catchall:path}", response_class=HTMLResponse)
-    async def serve_spa(request: Request, catchall: str):
-        # Exclude backend-specific paths to allow 404 falling back correctly
-        if (
-            catchall.startswith("api/") or 
-            catchall in ("docs", "redoc", "openapi.json") or
-            catchall.startswith("assets/")
-        ):
-            raise HTTPException(status_code=404)
-            
-        index_path = static_dir / "index.html"
-        if index_path.exists():
-            with open(index_path, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read(), status_code=200)
-        return HTMLResponse(content="Frontend build index.html not found.", status_code=404)
+    class SPAStaticFiles(StaticFiles):
+        async def get_response(self, path: str, scope):
+            try:
+                return await super().get_response(path, scope)
+            except HTTPException as e:
+                if e.status_code == 404:
+                    return await super().get_response("index.html", scope)
+                raise e
+            except Exception as e:
+                if hasattr(e, "status_code") and e.status_code == 404:
+                    return await super().get_response("index.html", scope)
+                raise e
+
+    app.mount("/", SPAStaticFiles(directory=str(static_dir), html=True), name="spa")
 else:
     log.warning(f"Static directory not found at: {static_dir}. SPA static routing disabled.")
     
