@@ -40,7 +40,7 @@ export const UserDashboard: React.FC = () => {
   const hasResult = result !== null;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-60px)] w-full overflow-hidden relative select-none">
+    <div className="flex flex-col h-full flex-1 w-full overflow-hidden relative select-none">
       
       {/* Top Banner / Header (Shrinks after search is active) */}
       <div className={`p-8 w-full border-b border-brand-border/40 bg-brand-secondary/30 flex flex-col gap-2 transition-all duration-500 ease-in-out ${

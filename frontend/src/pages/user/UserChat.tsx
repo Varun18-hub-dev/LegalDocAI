@@ -93,15 +93,15 @@ export const UserChat: React.FC = () => {
   ];
 
   return (
-    <div className="flex h-[calc(100vh-60px)] w-full overflow-hidden select-none">
+    <div className="flex flex-col md:flex-row h-full flex-1 w-full overflow-hidden select-none">
       
       {/* Left Column: PDF Viewer */}
-      <div className="w-[50%] h-full border-r border-brand-border/60">
+      <div className="w-full md:w-[50%] h-[40vh] md:h-full border-b md:border-b-0 md:border-r border-brand-border/60">
         <PDFViewer docId={docId} />
       </div>
 
       {/* Right Column: Chat Q&A & Document summary tab */}
-      <div className="w-[50%] h-full flex flex-col bg-brand-dark overflow-hidden">
+      <div className="w-full md:w-[50%] h-[60vh] md:h-full flex flex-col bg-brand-dark overflow-hidden">
         {/* Document Header & Tab Selector */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border/60 bg-brand-secondary/90 flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
