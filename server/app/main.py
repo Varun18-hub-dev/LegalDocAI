@@ -44,11 +44,43 @@ def seed_admin_user():
     except Exception as e:
         log.error(f"Failed to seed ADMIN account: {e}", exc_info=True)
 
+def check_and_trigger_kb_seeding():
+    """Checks if the global KB is empty; if so, triggers ingestion asynchronously."""
+    try:
+        conn = get_db_conn()
+        cursor = conn.cursor()
+        # Verify if nodes are present in hierarchy_nodes table
+        cursor.execute("SELECT COUNT(*) FROM hierarchy_nodes")
+        count = cursor.fetchone()[0]
+        conn.close()
+        
+        if count == 0:
+            log.info("Global Knowledge Base appears to be empty. Launching background seeding...")
+            import threading
+            from scripts.build_kb_v2 import build_knowledge_base_v2
+            
+            def run_seeding():
+                try:
+                    build_knowledge_base_v2(reset=False)
+                    log.info("Background Global Knowledge Base seeding completed successfully.")
+                except Exception as ex:
+                    log.error(f"Error during background Global KB seeding: {ex}", exc_info=True)
+            
+            # Start background thread to keep startup unblocked
+            thread = threading.Thread(target=run_seeding)
+            thread.daemon = True
+            thread.start()
+        else:
+            log.info(f"Global Knowledge Base already populated with {count} nodes.")
+    except Exception as e:
+        log.error(f"Failed checking/triggering Global KB seeding: {e}", exc_info=True)
+
 # Initialize database tables on startup
 try:
     log.info("Initializing SQLite database tables...")
     init_db()
     seed_admin_user()
+    check_and_trigger_kb_seeding()
 except Exception as e:
     log.critical(f"Database initialization failed: {e}", exc_info=True)
 
