@@ -37,7 +37,9 @@ frontend/dist/
 # ==========================
 # Project Data
 # ==========================
-server/data/
+server/data/*
+!server/data/scrapers/
+!server/data/__init__.py
 server/logs/
 server/vector_store/
 uploads/
