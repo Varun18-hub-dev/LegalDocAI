@@ -1,33 +1,16 @@
 # ==========================================
-# STAGE 1: Build the React Frontend
+# FastAPI Backend and Pre-built Frontend
 # ==========================================
-FROM node:22-alpine AS frontend-builder
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
+FROM python:3.11-slim
 
-# ==========================================
-# STAGE 2: Package Backend Runtime
-# ==========================================
-FROM python:3.11-slim AS backend-runtime
 WORKDIR /app/server
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy backend dependencies and install
 COPY server/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code
+# Copy the entire server directory (pre-built frontend assets are in server/app/static)
 COPY server/ ./
-
-# Copy compiled frontend build into FastAPI static folder
-COPY --from=frontend-builder /app/frontend/dist ./app/static/
 
 # Expose FastAPI port
 EXPOSE 8000
