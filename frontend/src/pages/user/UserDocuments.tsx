@@ -8,26 +8,13 @@ import { apiService } from '../../services/api';
 export const UserDocuments: React.FC = () => {
   const navigate = useNavigate();
   const { documents, fetchDocuments, deleteDocument } = useDocumentStore();
-  const [selectedSummaryDoc, setSelectedSummaryDoc] = useState<string | null>(null);
-  const [summaryText, setSummaryText] = useState<string | null>(null);
-  const [loadingSummary, setLoadingSummary] = useState(false);
 
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  const handleGenerateSummary = async (docId: string) => {
-    setSelectedSummaryDoc(docId);
-    setLoadingSummary(true);
-    setSummaryText(null);
-    try {
-      const data = await apiService.getDocumentSummary(docId);
-      setSummaryText(data.summary);
-    } catch (err: any) {
-      setSummaryText('Failed to generate summary.');
-    } finally {
-      setLoadingSummary(false);
-    }
+  const handleGenerateSummary = (docId: string) => {
+    navigate(`/user/chat/${docId}?tab=summary`);
   };
 
   const handleDelete = async (docId: string) => {
@@ -41,7 +28,7 @@ export const UserDocuments: React.FC = () => {
   };
 
   return (
-    <div className="p-8 max-w-5xl mx-auto flex flex-col gap-8 select-none">
+    <div className="p-8 max-w-5xl mx-auto flex flex-col gap-8 select-none h-full overflow-y-auto">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white font-heading">My Legal Documents</h2>
         <p className="text-xs text-gray-400 mt-1">Upload and organize your private legal agreements, contracts, or filings.</p>
@@ -133,27 +120,6 @@ export const UserDocuments: React.FC = () => {
             </p>
             <UploadZone />
           </div>
-
-          {/* Summarizer Sidebar Info */}
-          {selectedSummaryDoc && (
-            <div className="glass-card p-6 border border-brand-border flex flex-col gap-3 animate-fade-in bg-brand-secondary/40">
-              <div className="flex justify-between items-center">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">Executive Summary</h4>
-                <button onClick={() => setSelectedSummaryDoc(null)} className="text-xs text-gray-500 hover:text-gray-300">Close</button>
-              </div>
-
-              {loadingSummary ? (
-                <div className="py-6 flex flex-col items-center justify-center gap-2 text-gray-400">
-                  <RefreshCw className="w-6 h-6 animate-spin text-accent-blue" />
-                  <span className="text-xs">Summarizing contract clauses...</span>
-                </div>
-              ) : (
-                <div className="text-xs leading-relaxed text-gray-300 whitespace-pre-wrap max-h-[300px] overflow-y-auto pr-1">
-                  {summaryText}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

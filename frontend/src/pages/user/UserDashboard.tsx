@@ -16,6 +16,8 @@ export const UserDashboard: React.FC = () => {
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastResponseRef = useRef<HTMLDivElement>(null);
+  const [prevLoading, setPrevLoading] = useState(false);
 
   const suggestedQueries = [
     "consequences of breach of contract compensation",
@@ -24,10 +26,15 @@ export const UserDashboard: React.FC = () => {
     "relevance of evidence in BSA section 27"
   ];
 
-  // Auto-scroll to bottom of conversation
+  // Smart scroll: scroll to top of new response when loading finishes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+    if (prevLoading && !loading && lastResponseRef.current) {
+      lastResponseRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (loading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    setPrevLoading(loading);
+  }, [messages, loading, prevLoading]);
 
   const handleSearch = async (questionText: string) => {
     if (!questionText.trim() || loading) return;
@@ -186,35 +193,41 @@ export const UserDashboard: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <div 
-                      key={msg.id}
-                      onClick={() => setActiveMessageId(msg.id)}
-                      className={`flex gap-4 p-5 rounded-2xl border transition-all cursor-pointer text-left ${
-                        activeMessageId === msg.id 
-                          ? 'bg-brand-secondary/60 border-accent-blue/40 shadow-glow-cyan' 
-                          : 'bg-brand-secondary/25 border-brand-border/40 hover:border-accent-blue/20'
-                      }`}
-                    >
-                      <div className="message-avatar w-9 h-9 rounded-xl bg-accent-blue/10 text-accent-blue border border-accent-blue/20 flex items-center justify-center text-xs font-bold font-mono select-none flex-shrink-0">
-                        AI
-                      </div>
-                      <div className="flex-1 flex flex-col gap-2">
-                        <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">AI Analysis Memo</h4>
-                        <div className="text-[14px] leading-[1.7] text-gray-200 whitespace-pre-wrap font-sans select-text">
-                          {msg.content}
-                        </div>
-                        {msg.citations && msg.citations.length > 0 && (
-                          <div className="message-citations flex flex-wrap gap-2 mt-3 select-none items-center">
-                            <span className="text-[9px] font-bold text-gray-500 uppercase">Citations:</span>
-                            {msg.citations.map((c: any, cIdx: number) => (
-                              <span key={cIdx} className="text-[9px] font-semibold px-2 py-0.5 bg-brand-tertiary border border-brand-border rounded text-accent-cyan">
-                                {c.coordinate || c.act_name || 'Source'}
-                              </span>
-                            ))}
+                    (() => {
+                      const isLastAssistant = msg.role === 'assistant' && messages.filter(m => m.role === 'assistant').slice(-1)[0]?.id === msg.id;
+                      return (
+                        <div 
+                          key={msg.id}
+                          ref={isLastAssistant ? lastResponseRef : null}
+                          onClick={() => setActiveMessageId(msg.id)}
+                          className={`flex gap-4 p-5 rounded-2xl border transition-all cursor-pointer text-left ${
+                            activeMessageId === msg.id 
+                              ? 'bg-brand-secondary/60 border-accent-blue/40 shadow-glow-cyan' 
+                              : 'bg-brand-secondary/25 border-brand-border/40 hover:border-accent-blue/20'
+                          }`}
+                        >
+                          <div className="message-avatar w-9 h-9 rounded-xl bg-accent-blue/10 text-accent-blue border border-accent-blue/20 flex items-center justify-center text-xs font-bold font-mono select-none flex-shrink-0">
+                            AI
                           </div>
-                        )}
-                      </div>
-                    </div>
+                          <div className="flex-1 flex flex-col gap-2">
+                            <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">AI Analysis Memo</h4>
+                            <div className="text-[14px] leading-[1.7] text-gray-200 whitespace-pre-wrap font-sans select-text">
+                              {msg.content}
+                            </div>
+                            {msg.citations && msg.citations.length > 0 && (
+                              <div className="message-citations flex flex-wrap gap-2 mt-3 select-none items-center">
+                                <span className="text-[9px] font-bold text-gray-500 uppercase">Citations:</span>
+                                {msg.citations.map((c: any, cIdx: number) => (
+                                  <span key={cIdx} className="text-[9px] font-semibold px-2 py-0.5 bg-brand-tertiary border border-brand-border rounded text-accent-cyan">
+                                    {c.coordinate || c.act_name || 'Source'}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()
                   )
                 ))}
                 

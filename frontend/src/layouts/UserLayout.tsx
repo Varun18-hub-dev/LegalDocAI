@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Scale, FileText, Search, GitCompare, LogOut, MessageSquare, Settings, Menu, X } from 'lucide-react';
+import { Scale, FileText, Search, GitCompare, LogOut, MessageSquare, Settings, Menu, X, Home } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
 
 export const UserLayout: React.FC = () => {
@@ -74,8 +74,8 @@ export const UserLayout: React.FC = () => {
               onClick={() => handleNavigate('/user/dashboard')}
               className={`menu-item ${location.pathname === '/user/dashboard' ? 'active-blue' : ''}`}
             >
-              <Search className="w-4 h-4" />
-              <span>Global KB Search</span>
+              <Home className="w-4 h-4" />
+              <span>Home</span>
             </button>
 
             <button 
@@ -91,7 +91,7 @@ export const UserLayout: React.FC = () => {
               className={`menu-item ${location.pathname.startsWith('/user/chat') ? 'active-blue' : ''}`}
             >
               <MessageSquare className="w-4 h-4" />
-              <span>Ask Legal Assistant</span>
+              <span>Q&A Sessions</span>
             </button>
 
             <button 

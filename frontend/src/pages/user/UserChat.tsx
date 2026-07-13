@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Send, FileText, Sparkles, MessageSquare, Loader2, ArrowLeft } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
@@ -11,11 +11,17 @@ import { PDFViewer } from '../../components/PDFViewer';
 export const UserChat: React.FC = () => {
   const { docId } = useParams<{ docId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const tabParam = queryParams.get('tab');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastResponseRef = useRef<HTMLDivElement>(null);
 
   const [inputQuestion, setInputQuestion] = useState('');
   const [summaryData, setSummaryData] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [prevQuerying, setPrevQuerying] = useState(false);
 
   const { documents, fetchDocuments } = useDocumentStore();
   const { 
@@ -36,10 +42,24 @@ export const UserChat: React.FC = () => {
     }
   }, [docId, currentDoc, fetchDocuments]);
 
-  // Scroll to bottom on new messages
+  // Initialize active tab based on query param
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isQuerying]);
+    if (tabParam === 'summary') {
+      setActiveTab('summary');
+    } else {
+      setActiveTab('chat');
+    }
+  }, [tabParam, setActiveTab]);
+
+  // Smart scroll logic: scroll to top of new response when query finishes
+  useEffect(() => {
+    if (prevQuerying && !isQuerying && lastResponseRef.current) {
+      lastResponseRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (isQuerying) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    setPrevQuerying(isQuerying);
+  }, [messages, isQuerying, prevQuerying]);
 
   // Fetch document summary if summary tab is opened and not already loaded
   useEffect(() => {
@@ -65,7 +85,49 @@ export const UserChat: React.FC = () => {
     setSummaryData(null);
   }, [docId]);
 
-  if (!docId) return null;
+  if (!docId) {
+    const processedDocs = documents.filter(d => d.status === 'processed');
+    return (
+      <div className="p-8 max-w-5xl mx-auto flex flex-col gap-8 select-none h-full overflow-y-auto">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-white font-heading">Document Q&A Sessions</h2>
+          <p className="text-xs text-gray-400 mt-1">Select an indexed contract or agreement from your workspace to start a private clause Q&A session.</p>
+        </div>
+
+        <div className="glass-card p-6 border border-brand-border bg-brand-secondary/40 flex flex-col gap-4">
+          <h3 className="text-sm font-semibold text-gray-200">Active Workspaces</h3>
+          {processedDocs.length === 0 ? (
+            <div className="py-12 text-center text-gray-500 italic text-xs flex flex-col items-center gap-3">
+              <FileText className="w-8 h-8 opacity-30 text-gray-600" />
+              <span>No processed agreements available. Upload a PDF in My Documents to start a Q&A session.</span>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {processedDocs.map(doc => (
+                <div key={doc.id} className="p-4 bg-brand-tertiary/20 hover:bg-brand-tertiary/40 border border-brand-border rounded-xl flex items-center justify-between gap-4 transition-all">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 bg-accent-blue/10 border border-accent-blue/20 rounded-lg text-accent-blue flex-shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-200 truncate">{doc.filename}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Uploaded on {new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => navigate(`/user/chat/${doc.id}`)}
+                    className="px-4 py-2 bg-accent-blue hover:bg-accent-blue/80 text-white text-xs font-semibold rounded-lg transition-all"
+                  >
+                    Open Chat
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,14 +226,16 @@ export const UserChat: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  messages.map((msg, idx) => (
-                    <div key={idx} className="flex flex-col gap-4">
-                      {/* User Question Bubble */}
-                      <div className="flex justify-end animate-fade-in">
-                        <div className="max-w-[85%] rounded-2xl p-4 text-sm leading-[1.7] bg-accent-blue text-white rounded-br-none">
-                          <p className="whitespace-pre-wrap font-sans">{msg.question}</p>
+                  messages.map((msg, idx) => {
+                    const isLast = idx === messages.length - 1;
+                    return (
+                      <div key={idx} className="flex flex-col gap-4" ref={isLast ? lastResponseRef : null}>
+                        {/* User Question Bubble */}
+                        <div className="flex justify-end animate-fade-in">
+                          <div className="max-w-[85%] rounded-2xl p-4 text-sm leading-[1.7] bg-accent-blue text-white rounded-br-none">
+                            <p className="whitespace-pre-wrap font-sans">{msg.question}</p>
+                          </div>
                         </div>
-                      </div>
 
                       {/* Assistant Answer Bubble */}
                       {msg.answer && (
@@ -199,8 +263,9 @@ export const UserChat: React.FC = () => {
                           </div>
                         </div>
                       )}
-                    </div>
-                  ))
+                      </div>
+                    );
+                  })
                 )}
 
                 {isQuerying && (

@@ -41,10 +41,21 @@ export const UserCompare: React.FC = () => {
   const processedDocs = documents.filter(d => d.status === 'processed');
 
   return (
-    <div className="p-8 max-w-5xl mx-auto flex flex-col gap-8 select-none">
+    <div className="p-8 max-w-5xl mx-auto flex flex-col gap-8 select-none h-full overflow-y-auto">
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-white font-heading">Compare Agreements</h2>
         <p className="text-xs text-gray-400 mt-1">Select two of your uploaded contracts to align and review clause changes side-by-side.</p>
+      </div>
+
+      {/* Informational Tip Banner */}
+      <div className="p-4 rounded-xl border border-accent-blue/20 bg-accent-blue/5 text-left flex gap-3 select-text">
+        <GitCompare className="w-5 h-5 text-accent-blue flex-shrink-0 mt-0.5" />
+        <div className="flex flex-col gap-1">
+          <h4 className="text-xs font-bold text-gray-200">Why compare agreements?</h4>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Legal contracts undergo multiple revisions during negotiation. This tool aligns two document drafts (e.g., Version 1 and Version 2) to analyze and highlight changes in clauses, liability caps, payment terms, or warranties side-by-side.
+          </p>
+        </div>
       </div>
 
       {/* Select Box */}
