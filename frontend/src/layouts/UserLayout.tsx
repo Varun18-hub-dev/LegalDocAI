@@ -91,7 +91,7 @@ export const UserLayout: React.FC = () => {
               className={`menu-item ${location.pathname.startsWith('/user/chat') ? 'active-blue' : ''}`}
             >
               <MessageSquare className="w-4 h-4" />
-              <span>Q&A Sessions</span>
+              <span>Chat History</span>
             </button>
 
             <button 

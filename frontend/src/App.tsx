@@ -74,6 +74,7 @@ function App() {
           >
             <Route path="dashboard" element={<UserDashboard />} />
             <Route path="documents" element={<UserDocuments />} />
+            <Route path="chat" element={<UserChat />} />
             <Route path="chat/:docId" element={<UserChat />} />
             <Route path="compare" element={<UserCompare />} />
             <Route path="settings" element={<UserSettings />} />

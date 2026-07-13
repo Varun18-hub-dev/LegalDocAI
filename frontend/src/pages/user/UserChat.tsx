@@ -148,7 +148,7 @@ export const UserChat: React.FC = () => {
     return (
       <div className="p-8 max-w-5xl mx-auto flex flex-col gap-8 select-none h-full overflow-y-auto">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white font-heading">Chat & Q&A Sessions</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-white font-heading">Chat History</h2>
           <p className="text-xs text-gray-400 mt-1">Resume your past statutory searches or document Q&A conversations exactly where you left off.</p>
         </div>
 
