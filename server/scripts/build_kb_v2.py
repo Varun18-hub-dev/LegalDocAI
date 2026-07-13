@@ -64,6 +64,30 @@ def build_knowledge_base_v2(reset=False):
         pdf_path = RAW_DATA_DIR / source["filename"]
         txt_path = PROCESSED_DATA_DIR / f"{pdf_path.stem}.txt"
         
+        # Download core PDF if missing and not already processed
+        if not pdf_path.exists() and not txt_path.exists():
+            print(f"  📥 Downloading core doc '{source['name']}' from: {source['url']}")
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+            try:
+                import requests
+                response = requests.get(source["url"], headers=headers, timeout=60, stream=True)
+                if response.status_code != 200 and "backup_url" in source:
+                    print(f"  ⚠️  Primary URL failed (Status {response.status_code}). Trying backup URL: {source['backup_url']}")
+                    response = requests.get(source["backup_url"], headers=headers, timeout=60, stream=True)
+                
+                if response.status_code == 200:
+                    with open(pdf_path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                    print(f"  ✅ Downloaded '{source['name']}' successfully.")
+                else:
+                    print(f"  ❌ Failed to download '{source['name']}'. Status code: {response.status_code}")
+            except Exception as e:
+                print(f"  ❌ Error downloading '{source['name']}': {e}")
+        
         if txt_path.exists():
             print(f"  📄 Text already extracted for core doc: {source['name']}")
             extracted_texts[key] = txt_path.read_text(encoding="utf-8")
