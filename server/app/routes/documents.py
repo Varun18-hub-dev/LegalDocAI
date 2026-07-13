@@ -130,7 +130,8 @@ async def query_document(doc_id: str, payload: QueryRequest, current_user: dict 
             create_chat_session(
                 session_id=payload.session_id,
                 user_id=current_user["id"],
-                title="Document QA Chat"
+                title=f"Doc QA: {doc['filename']}",
+                tags_list=[f"doc_{doc_id}"]
             )
         # 1. Insert User Query
         insert_chat_message(payload.session_id, "user", payload.question)

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Send, FileText, Sparkles, MessageSquare, Loader2, ArrowLeft } from 'lucide-react';
+import { Send, FileText, Sparkles, MessageSquare, Loader2, ArrowLeft, Trash2, Calendar } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 import { useDocumentStore } from '../../store/useDocumentStore';
@@ -14,6 +14,7 @@ export const UserChat: React.FC = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const tabParam = queryParams.get('tab');
+  const sessionParam = queryParams.get('session');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastResponseRef = useRef<HTMLDivElement>(null);
@@ -22,6 +23,8 @@ export const UserChat: React.FC = () => {
   const [summaryData, setSummaryData] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [prevQuerying, setPrevQuerying] = useState(false);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
 
   const { documents, fetchDocuments } = useDocumentStore();
   const { 
@@ -30,7 +33,9 @@ export const UserChat: React.FC = () => {
     activeTab, 
     setActiveTab, 
     sendMessage, 
-    clearHistory
+    clearHistory,
+    setSessionId,
+    fetchHistory
   } = useChatStore();
 
   const currentDoc = documents.find((d) => d.id === docId);
@@ -41,6 +46,38 @@ export const UserChat: React.FC = () => {
       fetchDocuments();
     }
   }, [docId, currentDoc, fetchDocuments]);
+
+  // Load session list if on the selector screen
+  useEffect(() => {
+    const loadSessionsList = async () => {
+      if (!docId) {
+        setLoadingSessions(true);
+        try {
+          const data = await apiService.listChatSessions();
+          setSessions(data);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setLoadingSessions(false);
+        }
+      }
+    };
+    loadSessionsList();
+  }, [docId]);
+
+  // Load specific session parameter
+  useEffect(() => {
+    if (docId) {
+      if (sessionParam) {
+        setSessionId(sessionParam);
+        fetchHistory();
+      } else {
+        const newSessId = 'sess_' + Math.random().toString(36).substring(2, 11);
+        setSessionId(newSessId);
+        useChatStore.setState({ messages: [] });
+      }
+    }
+  }, [docId, sessionParam, setSessionId, fetchHistory]);
 
   // Initialize active tab based on query param
   useEffect(() => {
@@ -85,43 +122,90 @@ export const UserChat: React.FC = () => {
     setSummaryData(null);
   }, [docId]);
 
+  const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to permanently delete this chat session and its history?')) {
+      try {
+        await apiService.deleteChatSession(sessionId);
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
+      } catch (err) {
+        alert('Failed to delete chat session.');
+      }
+    }
+  };
+
+  const handleOpenSession = (session: any) => {
+    const docTag = session.tags?.find((t: string) => t.startsWith('doc_'));
+    if (docTag) {
+      const parsedDocId = docTag.replace('doc_', '');
+      navigate(`/user/chat/${parsedDocId}?session=${session.id}`);
+    } else {
+      navigate(`/user/dashboard?session=${session.id}`);
+    }
+  };
+
   if (!docId) {
-    const processedDocs = documents.filter(d => d.status === 'processed');
     return (
       <div className="p-8 max-w-5xl mx-auto flex flex-col gap-8 select-none h-full overflow-y-auto">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-white font-heading">Document Q&A Sessions</h2>
-          <p className="text-xs text-gray-400 mt-1">Select an indexed contract or agreement from your workspace to start a private clause Q&A session.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-white font-heading">Chat & Q&A Sessions</h2>
+          <p className="text-xs text-gray-400 mt-1">Resume your past statutory searches or document Q&A conversations exactly where you left off.</p>
         </div>
 
         <div className="glass-card p-6 border border-brand-border bg-brand-secondary/40 flex flex-col gap-4">
-          <h3 className="text-sm font-semibold text-gray-200">Active Workspaces</h3>
-          {processedDocs.length === 0 ? (
+          <h3 className="text-sm font-semibold text-gray-200">Recent Conversations</h3>
+          
+          {loadingSessions ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-2 text-gray-400">
+              <Loader2 className="w-8 h-8 animate-spin text-accent-blue" />
+              <span className="text-xs">Loading conversations...</span>
+            </div>
+          ) : sessions.length === 0 ? (
             <div className="py-12 text-center text-gray-500 italic text-xs flex flex-col items-center gap-3">
-              <FileText className="w-8 h-8 opacity-30 text-gray-600" />
-              <span>No processed agreements available. Upload a PDF in My Documents to start a Q&A session.</span>
+              <MessageSquare className="w-8 h-8 opacity-30 text-gray-600" />
+              <span>No active chat sessions found. Start a search on the Home page or query a contract under My Documents.</span>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {processedDocs.map(doc => (
-                <div key={doc.id} className="p-4 bg-brand-tertiary/20 hover:bg-brand-tertiary/40 border border-brand-border rounded-xl flex items-center justify-between gap-4 transition-all">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 bg-accent-blue/10 border border-accent-blue/20 rounded-lg text-accent-blue flex-shrink-0">
-                      <FileText className="w-5 h-5" />
+              {sessions.map(sess => {
+                const isDocQA = sess.tags?.some((t: string) => t.startsWith('doc_'));
+                return (
+                  <div 
+                    key={sess.id} 
+                    onClick={() => handleOpenSession(sess)}
+                    className="p-4 bg-brand-tertiary/20 hover:bg-brand-tertiary/40 border border-brand-border hover:border-accent-blue/20 rounded-xl flex items-center justify-between gap-4 transition-all cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`p-2 rounded-lg flex-shrink-0 border ${
+                        isDocQA 
+                          ? 'bg-accent-blue/10 border-accent-blue/20 text-accent-blue' 
+                          : 'bg-accent-cyan/10 border-accent-cyan/20 text-accent-cyan'
+                      }`}>
+                        {isDocQA ? <FileText className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-200 truncate">{sess.title}</p>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+                          <span>{isDocQA ? 'Document Q&A' : 'Global statutory Search'}</span>
+                          <span>•</span>
+                          <Calendar className="w-3 h-3" />
+                          <span>{new Date(sess.updated_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-200 truncate">{doc.filename}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">Uploaded on {new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                    
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button 
+                        onClick={(e) => handleDeleteSession(sess.id, e)}
+                        className="p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all"
+                        title="Delete Session"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => navigate(`/user/chat/${doc.id}`)}
-                    className="px-4 py-2 bg-accent-blue hover:bg-accent-blue/80 text-white text-xs font-semibold rounded-lg transition-all"
-                  >
-                    Open Chat
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

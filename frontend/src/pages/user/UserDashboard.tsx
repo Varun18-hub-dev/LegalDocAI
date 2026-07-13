@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Compass, AlertCircle, Bookmark, Loader2, RefreshCw } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Search, Compass, AlertCircle, Bookmark, Loader2, RefreshCw, MessageSquare } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface SearchMessage {
@@ -10,11 +11,18 @@ interface SearchMessage {
 }
 
 export const UserDashboard: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const queryParams = new URLSearchParams(location.search);
+  const sessionParam = queryParams.get('session');
+
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<SearchMessage[]>([]);
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastResponseRef = useRef<HTMLDivElement>(null);
   const [prevLoading, setPrevLoading] = useState(false);
@@ -25,6 +33,47 @@ export const UserDashboard: React.FC = () => {
     "theft provisions under Bharatiya Nyaya Sanhita 2023",
     "relevance of evidence in BSA section 27"
   ];
+
+  // Load session history if sessionParam is present
+  useEffect(() => {
+    const loadSessionHistory = async () => {
+      if (sessionParam) {
+        setLoading(true);
+        setError(null);
+        setCurrentSessionId(sessionParam);
+        try {
+          const res = await apiService.getChatHistory(sessionParam);
+          const mapped = res.history.flatMap(h => [
+            { id: `user-${h.id}`, role: 'user', content: h.question } as SearchMessage,
+            { 
+              id: `assistant-${h.id}`, 
+              role: 'assistant', 
+              content: h.answer, 
+              citations: h.sources.map(s => ({
+                coordinate: `Page ${s.page || 1}`,
+                snippet: s.text,
+                confidence_score: s.score
+              }))
+            } as SearchMessage
+          ]);
+          setMessages(mapped);
+          if (mapped.length > 0) {
+            setActiveMessageId(mapped[mapped.length - 1].id);
+          }
+        } catch (err: any) {
+          console.error(err);
+          setError('Failed to load session history.');
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setMessages([]);
+        setCurrentSessionId(null);
+        setActiveMessageId(null);
+      }
+    };
+    loadSessionHistory();
+  }, [sessionParam]);
 
   // Smart scroll: scroll to top of new response when loading finishes
   useEffect(() => {
@@ -40,6 +89,14 @@ export const UserDashboard: React.FC = () => {
     if (!questionText.trim() || loading) return;
     setLoading(true);
     setError(null);
+
+    // Get or generate session ID
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      sessionId = 'sess_global_' + Math.random().toString(36).substring(2, 11);
+      setCurrentSessionId(sessionId);
+      navigate(`/user/dashboard?session=${sessionId}`, { replace: true });
+    }
     
     const userMsgId = `user-${Date.now()}`;
     const updatedMessages: SearchMessage[] = [
@@ -50,7 +107,7 @@ export const UserDashboard: React.FC = () => {
     setQuery(''); // Clear search input
     
     try {
-      const data = await apiService.queryGlobalKB(questionText);
+      const data = await apiService.queryGlobalKB(questionText, sessionId);
       const assistantMsgId = `assistant-${Date.now()}`;
       
       const finalMessages: SearchMessage[] = [
@@ -66,7 +123,7 @@ export const UserDashboard: React.FC = () => {
       setActiveMessageId(assistantMsgId);
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.message || err.message || 'Search request failed.');
+      setError(err.response?.data?.detail || err.response?.data?.message || err.message || 'Search request failed.');
     } finally {
       setLoading(false);
     }
@@ -82,6 +139,8 @@ export const UserDashboard: React.FC = () => {
     setMessages([]);
     setActiveMessageId(null);
     setError(null);
+    setCurrentSessionId(null);
+    navigate('/user/dashboard');
   };
 
   const hasResult = messages.length > 0;

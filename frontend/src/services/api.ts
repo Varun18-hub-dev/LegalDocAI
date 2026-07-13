@@ -126,9 +126,10 @@ export const apiService = {
   /**
    * Query the global legal knowledge base (RAG)
    */
-  async queryGlobalKB(question: string): Promise<SearchResponse> {
+  async queryGlobalKB(question: string, sessionId?: string): Promise<SearchResponse> {
     const { data } = await apiClient.post<SearchResponse>('/kb/query', {
       question,
+      session_id: sessionId,
     });
     return data;
   },
@@ -146,6 +147,22 @@ export const apiService = {
    */
   async clearChatHistory(sessionId: string): Promise<{ status: string; message: string }> {
     const { data } = await apiClient.delete(`/chat/${sessionId}`);
+    return data;
+  },
+
+  /**
+   * List all user chat sessions (global + custom docs)
+   */
+  async listChatSessions(): Promise<any[]> {
+    const { data } = await apiClient.get<any[]>('/chat/sessions');
+    return data;
+  },
+
+  /**
+   * Delete a chat session
+   */
+  async deleteChatSession(sessionId: string): Promise<{ status: string; message: string }> {
+    const { data } = await apiClient.delete(`/chat/sessions/${sessionId}`);
     return data;
   },
 
