@@ -29,6 +29,23 @@ apiClient.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+// Handle 401 Unauthorized errors globally by logging out and redirecting to login
+apiClient.interceptors.response.use((response) => {
+  return response;
+}, (error) => {
+  if (error.response && error.response.status === 401) {
+    // Clear credentials in auth store
+    useAuthStore.getState().logout();
+    
+    // Redirect to login page if we are not already on login or register pages
+    const currentPath = window.location.pathname;
+    if (currentPath !== '/login' && currentPath !== '/register') {
+      window.location.href = '/login';
+    }
+  }
+  return Promise.reject(error);
+});
+
 export const apiService = {
   /**
    * Check backend API health
